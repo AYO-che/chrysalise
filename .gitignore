@@ -1,0 +1,10 @@
+# Node modules
+server/node_modules/
+user/node_modules/
+
+# Environment files
+server/.env
+user/.env
+
+# Build / Cache
+user/dist/

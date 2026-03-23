@@ -1,0 +1,297 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                     String         @id @default(uuid()) @db.Uuid
+  email                  String         @unique
+  password               String?
+  role                   Role           @default(CLIENT)
+  googleId               String?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  firstName              String?
+  image                  String?
+  lastName               String?
+  deletedAt              DateTime?
+  posts                  BlogPost[]
+  plansPosted            Plan[]         @relation("NutritionPlans")
+  profile                Profile?
+  resume                 Resume?
+  reviewsReceived        Review[]       @relation("NutritionReviews")
+  reviewsGiven           Review[]       @relation("PatientReviews")
+  sessionsAsNutrition    Session[]      @relation("NutritionSessions")
+  sessionsAsPatient      Session[]      @relation("PatientSessions")
+  stripe                 Stripe?
+  nutritionSubscriptions Subscription[] @relation("NutritionSubscriptions")
+  patientSubscriptions   Subscription[] @relation("PatientSubscriptions")
+  conversationsAsPatient   Conversation[] @relation("PatientConversations")
+  conversationsAsNutrition Conversation[] @relation("NutritionConversations")
+  messages               Message[]
+  notifications          Notification[]
+  inquiries              Inquiry[]
+  resetToken       String?
+  resetTokenExpiry DateTime?
+ usedFreePlanTrial Boolean @default(false)
+
+}
+
+
+model Profile {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @unique @db.Uuid
+  dateOfBirth       DateTime
+  gender            String
+  weight            Float
+  height            Float
+  goal              String
+  activityLevel     String
+  allergies         String[] @default([])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  images            String[] @default([])
+  medicalConditions String[] @default([])
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([goal])
+  @@index([activityLevel])
+}
+
+model Resume {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @unique @db.Uuid
+  bio             String?
+  experienceYears Int?
+  specializations String[] @default([])
+  certifications  String?
+  ratingAverage   Float    @default(0)
+  images          String[] @default([])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Offer {
+  id               String         @id @default(uuid()) @db.Uuid
+  name             String
+  description      String?
+  type             OfferType
+  price            Float
+  durationDays     Int
+  hasFreeTrial     Boolean        @default(false)
+  includesSessions Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  isActive         Boolean        @default(true)
+  plan             Plan?
+  subscriptions    Subscription[]
+}
+
+model Plan {
+  id                String   @id @default(uuid()) @db.Uuid
+  offerId           String   @unique @db.Uuid
+  nutritionId       String?  @db.Uuid
+  title             String
+  content           Json
+  images            String[] @default([])
+  videos            String[] @default([])
+  pdfUrl            String?
+  goals             String[] @default([])
+  activityLevels    String[] @default([])
+  minWeight         Float?
+  maxWeight         Float?
+  minHeight         Float?
+  maxHeight         Float?
+  medicalConditions String[] @default([])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  nutrition         User?    @relation("NutritionPlans", fields: [nutritionId], references: [id], onDelete: SetNull)
+  offer             Offer    @relation(fields: [offerId], references: [id], onDelete: Restrict)
+}
+
+model Subscription {
+  id          String             @id @default(uuid()) @db.Uuid
+  patientId   String             @db.Uuid
+  nutritionId String?            @db.Uuid
+  offerId     String             @db.Uuid
+  startDate   DateTime
+  endDate     DateTime
+  status      SubscriptionStatus @default(PENDING)
+  deletedAt   DateTime?
+  payments    Payment[]
+  sessions    Session[]
+  nutrition   User?              @relation("NutritionSubscriptions", fields: [nutritionId], references: [id], onDelete: SetNull)
+  offer       Offer              @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  patient     User               @relation("PatientSubscriptions", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([nutritionId])
+  @@index([status])
+}
+
+model Payment {
+  id             String        @id @default(uuid()) @db.Uuid
+  subscriptionId String        @db.Uuid
+  amount         Float
+  status         PaymentStatus
+  paymentMethod  String
+  transactionId  String?
+  createdAt      DateTime      @default(now())
+  subscription   Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+}
+
+model Session {
+  id             String        @id @default(uuid()) @db.Uuid
+  subscriptionId String        @db.Uuid
+  patientId      String        @db.Uuid
+  nutritionId    String        @db.Uuid
+  sessionDate    DateTime
+  status         SessionStatus @default(SCHEDULED)
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  zoomLink       String?
+  reviews        Review[]
+  nutrition      User          @relation("NutritionSessions", fields: [nutritionId], references: [id], onDelete: Cascade)
+  patient        User          @relation("PatientSessions", fields: [patientId], references: [id], onDelete: Cascade)
+  subscription   Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionDate])
+  @@index([patientId])
+  @@index([nutritionId])
+}
+
+model BlogPost {
+  id        String     @id @default(uuid()) @db.Uuid
+  title     String
+  content   String
+  authorId  String     @db.Uuid
+  status    PostStatus @default(PENDING)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+  images    String[]   @default([])
+  videos    String[]   @default([])
+  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+model Review {
+  id          String   @id @default(uuid()) @db.Uuid
+  patientId   String   @db.Uuid
+  nutritionId String   @db.Uuid
+  rating      Int
+  comment     String?
+  createdAt   DateTime @default(now())
+  sessionId   String   @db.Uuid
+  nutrition   User     @relation("NutritionReviews", fields: [nutritionId], references: [id], onDelete: Cascade)
+  patient     User     @relation("PatientReviews", fields: [patientId], references: [id], onDelete: Cascade)
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, patientId])
+}
+
+model Stripe {
+  stripeAccountId String   @id
+  userId          String   @unique @db.Uuid
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Inquiry {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  email     String
+  message   String
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  userId    String?  @db.Uuid
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Message {
+  id             String       @id @default(uuid()) @db.Uuid
+  conversationId String       @db.Uuid
+  senderId       String       @db.Uuid
+  content        String
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([senderId])
+}
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Conversation {
+  id          String    @id @default(uuid()) @db.Uuid
+  patientId   String    @db.Uuid
+  nutritionId String    @db.Uuid
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  patient     User      @relation("PatientConversations", fields: [patientId], references: [id], onDelete: Cascade)
+  nutrition   User      @relation("NutritionConversations", fields: [nutritionId], references: [id], onDelete: Cascade)
+  messages    Message[]
+
+  @@index([patientId])
+  @@index([nutritionId])
+  @@unique([patientId, nutritionId])
+}
+
+enum Role {
+  ADMIN
+  CLIENT
+  NUTRITION
+}
+
+enum OfferType {
+  AI_CALORIES
+  PLAN
+  CONSULTATION
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  PENDING
+}
+
+enum PaymentStatus {
+  SUCCESS
+  FAILED
+  PENDING
+}
+
+enum SessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum PostStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}

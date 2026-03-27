@@ -3,7 +3,7 @@ import prisma from "../prismaClient.js";
 import { io, connectedUsers } from "../socket.js";
 
 // ==============================
-//  Get or create a conversation between patient and nutritionist
+// 1️⃣ Get or create a conversation between patient and nutritionist
 // ==============================
 export const getOrCreateConversation = async (req, res) => {
   try {
@@ -16,6 +16,24 @@ export const getOrCreateConversation = async (req, res) => {
 
     const patientId = role === "CLIENT" ? userId : otherUserId;
     const nutritionId = role === "NUTRITION" ? userId : otherUserId;
+
+    if (role === "CLIENT") {
+      const hasSubscription = await prisma.subscription.findFirst({
+        where: {
+          patientId,
+          nutritionId,
+          status: { in: ["ACTIVE", "EXPIRED", "CANCELLED"] },
+          offer: {
+            type: { in: ["CONSULTATION", "PLAN"] },
+          },
+        },
+      });
+
+      if (!hasSubscription)
+        return res.status(403).json({
+          message: "You can only chat with a nutritionist after subscribing to one of their offers",
+        });
+    }
 
     const conversation = await prisma.conversation.upsert({
       where: { patientId_nutritionId: { patientId, nutritionId } },
@@ -34,7 +52,7 @@ export const getOrCreateConversation = async (req, res) => {
 };
 
 // ==============================
-//  Get all conversations for the logged-in user
+// 2️⃣ Get all conversations for the logged-in user
 // ==============================
 export const getMyConversations = async (req, res) => {
   try {
@@ -51,7 +69,7 @@ export const getMyConversations = async (req, res) => {
         nutrition: { select: { id: true, firstName: true, lastName: true, image: true } },
         messages: {
           orderBy: { createdAt: "desc" },
-          take: 1, // last message preview
+          take: 1,
         },
       },
       orderBy: { updatedAt: "desc" },
@@ -64,7 +82,7 @@ export const getMyConversations = async (req, res) => {
 };
 
 // ==============================
-//  Get all messages in a conversation
+// 3️⃣ Get all messages in a conversation
 // ==============================
 export const getMessages = async (req, res) => {
   try {
@@ -78,7 +96,6 @@ export const getMessages = async (req, res) => {
     if (!conversation)
       return res.status(404).json({ message: "Conversation not found" });
 
-    // Only participants can read messages
     if (conversation.patientId !== userId && conversation.nutritionId !== userId)
       return res.status(403).json({ message: "Access forbidden" });
 
@@ -90,7 +107,6 @@ export const getMessages = async (req, res) => {
       },
     });
 
-    // Mark all unread messages as read for this user
     await prisma.message.updateMany({
       where: {
         conversationId,
@@ -107,7 +123,7 @@ export const getMessages = async (req, res) => {
 };
 
 // ==============================
-// Send a message
+// 4️⃣ Send a message
 // ==============================
 export const sendMessage = async (req, res) => {
   try {
@@ -125,11 +141,27 @@ export const sendMessage = async (req, res) => {
     if (!conversation)
       return res.status(404).json({ message: "Conversation not found" });
 
-    // Only participants can send messages
     if (conversation.patientId !== senderId && conversation.nutritionId !== senderId)
       return res.status(403).json({ message: "Access forbidden" });
 
-    // Determine the receiver
+    if (req.user.role === "CLIENT") {
+      const hasSubscription = await prisma.subscription.findFirst({
+        where: {
+          patientId: senderId,
+          nutritionId: conversation.nutritionId,
+          status: { in: ["ACTIVE", "EXPIRED", "CANCELLED"] },
+          offer: {
+            type: { in: ["CONSULTATION", "PLAN"] },
+          },
+        },
+      });
+
+      if (!hasSubscription)
+        return res.status(403).json({
+          message: "You need to subscribe first before sending messages",
+        });
+    }
+
     const receiverId =
       conversation.patientId === senderId
         ? conversation.nutritionId
@@ -142,13 +174,11 @@ export const sendMessage = async (req, res) => {
       },
     });
 
-    // Update conversation updatedAt so it bubbles to top of list
     await prisma.conversation.update({
       where: { id: conversationId },
       data: { updatedAt: new Date() },
     });
 
-    // Save notification to DB
     const notification = await prisma.notification.create({
       data: {
         userId: receiverId,
@@ -158,7 +188,6 @@ export const sendMessage = async (req, res) => {
       },
     });
 
-    // Emit real-time notification if receiver is online
     const receiverSocketId = connectedUsers.get(receiverId);
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("notification", notification);

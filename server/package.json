@@ -9,7 +9,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^6.19.2",
+    "@prisma/adapter-pg": "^7.6.0",
+    "@prisma/client": "^7.6.0",
     "axios": "^1.13.6",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
@@ -25,7 +26,7 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
     "pg": "^8.18.0",
-    "prisma": "^6.19.2",
+    "prisma": "^7.6.0",
     "socket.io": "^4.8.3",
     "stripe": "^20.4.0"
   },

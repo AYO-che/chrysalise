@@ -105,6 +105,9 @@ export const createPlan = async (req, res) => {
         message: "offerName, offerPrice, offerDurationDays, title and content are required",
       });
 
+    if (!content.days || !Array.isArray(content.days) || content.days.length === 0)
+      return res.status(400).json({ message: "Content must have a non-empty days array" });
+
     const result = await prisma.$transaction(async (tx) => {
       const offer = await tx.offer.create({
         data: {
@@ -244,7 +247,6 @@ export const deletePlan = async (req, res) => {
     if (req.user.role !== "ADMIN" && existing.nutritionId !== nutritionId)
       return res.status(403).json({ message: "You can only delete your own plans" });
 
-    // Check no active subscriptions exist
     const activeSubscriptions = await prisma.subscription.findFirst({
       where: { offerId: existing.offerId, status: { in: ["ACTIVE", "PENDING"] } },
     });
@@ -255,7 +257,6 @@ export const deletePlan = async (req, res) => {
 
     await prisma.$transaction(async (tx) => {
       await tx.plan.delete({ where: { id } });
-
       await tx.offer.update({
         where: { id: existing.offerId },
         data: { isActive: false },

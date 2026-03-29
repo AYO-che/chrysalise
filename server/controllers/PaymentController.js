@@ -32,7 +32,7 @@ export const createPayment = async (req, res) => {
     if (subscription.patientId !== userId)
       return res.status(403).json({ message: "You cannot pay for this subscription" });
 
-    // Block payment if subscription is already active (free trial)
+    // Free trial protection
     if (subscription.status === "ACTIVE") {
       const existingPayment = await prisma.payment.findFirst({
         where: { subscriptionId, status: "SUCCESS" },
@@ -60,10 +60,12 @@ export const createPayment = async (req, res) => {
       metadata: { subscriptionId },
     };
 
+    // Stripe Connect
     if (["CONSULTATION", "PLAN"].includes(offer.type)) {
       const stripeAccountId = nutrition?.stripe?.stripeAccountId;
       if (!stripeAccountId)
         return res.status(400).json({ message: "Nutritionist Stripe account not linked" });
+
       paymentIntentData.transfer_data = { destination: stripeAccountId };
     }
 
@@ -72,7 +74,9 @@ export const createPayment = async (req, res) => {
     if (paymentIntent.status !== "succeeded")
       return res.status(400).json({ message: "Payment not completed", status: paymentIntent.status });
 
-    // ─── Create Zoom meeting OUTSIDE the transaction ───
+    // =========================
+    // Zoom (outside transaction)
+    // =========================
     let zoomLink = null;
     let scheduledDate = null;
 
@@ -91,8 +95,11 @@ export const createPayment = async (req, res) => {
       );
     }
 
-    // ─── DB writes in transaction ───
+    // =========================
+    // DB TRANSACTION
+    // =========================
     const result = await prisma.$transaction(async (tx) => {
+      // 1️⃣ payment
       const payment = await tx.payment.create({
         data: {
           subscriptionId,
@@ -103,12 +110,38 @@ export const createPayment = async (req, res) => {
         },
       });
 
-      await tx.subscription.update({
+      // 2️⃣ activate subscription
+      const updatedSubscription = await tx.subscription.update({
         where: { id: subscriptionId },
         data: { status: "ACTIVE", startDate: new Date() },
       });
 
       let session = null;
+
+      // =========================
+      // 🔥 PLAN LOGIC (NEW)
+      // =========================
+      if (offer.type === "PLAN") {
+        const plan = await tx.plan.findUnique({
+          where: { offerId: subscription.offerId },
+        });
+
+        if (!plan) throw new Error("Plan not found");
+
+        // ✅ create UserPlan
+        await tx.userPlan.create({
+          data: {
+            userId: subscription.patientId,
+            planId: plan.id,
+            subscriptionId: subscription.id,
+            startDate: new Date(),
+          },
+        });
+      }
+
+      // =========================
+      // CONSULTATION
+      // =========================
       if (offer.type === "CONSULTATION") {
         session = await tx.session.create({
           data: {
@@ -125,7 +158,9 @@ export const createPayment = async (req, res) => {
       return { payment, session };
     });
 
-    // ─── Real-time notifications (after transaction) ───
+    // =========================
+    // Notifications
+    // =========================
     if (result.session && offer.type === "CONSULTATION") {
       const { session } = result;
 
@@ -164,12 +199,13 @@ export const createPayment = async (req, res) => {
       session: result.session,
     });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
 // =====================
-// 2️⃣ Get all my payments (CLIENT)
+// 2️⃣ Get my payments
 // =====================
 export const getMyPayments = async (req, res) => {
   try {

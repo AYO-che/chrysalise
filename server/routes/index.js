@@ -82,7 +82,7 @@ import {
   createPayment,
   getMyPayments,
   getPaymentById,
-} from "../controllers/paymentController.js";
+} from "../controllers/PaymentController.js";
 
 // Sessions
 import {
@@ -135,6 +135,15 @@ import {
 } from "../controllers/messageController.js";
 
 const router = express.Router();
+// userPlanC
+import {
+  getMyCurrentPlanDay,
+  getMyUserPlans,
+  createOrUpdateDailyTracking,
+  getDailyTracking,
+  getDailyTrackingByDate,
+  getUserPlanById,
+} from "../controllers/userPlanController.js";
 
 /* =========================
    AUTH ROUTES
@@ -250,8 +259,7 @@ router.delete("/offers/:id", authenticateToken, authorizeRoles("NUTRITION", "ADM
 /* =========================
    PLAN ROUTES
 ========================= */
-
-//  Static routes MUST come before /:id routes
+ 
 router.get("/plans/mine", authenticateToken, authorizeRoles("NUTRITION"), getMyPlans);
 router.get("/plans/recommended", authenticateToken, authorizeRoles("CLIENT"), getRecommendedPlans);
 router.get("/plans", authenticateToken, getAllPlans);
@@ -338,4 +346,14 @@ router.get("/conversations", authenticateToken, authorizeRoles("CLIENT", "NUTRIT
 router.get("/conversations/:conversationId/messages", authenticateToken, getMessages);
 router.post("/conversations/:conversationId/messages", authenticateToken, sendMessage);
 
+/* =========================
+   USER PLAN ROUTES
+========================= */
+
+router.get("/user-plans/mine", authenticateToken, authorizeRoles("CLIENT"), getMyUserPlans);
+router.get("/user-plans/current-day", authenticateToken, authorizeRoles("CLIENT"), getMyCurrentPlanDay);
+router.get("/user-plans/:id", authenticateToken, authorizeRoles("CLIENT"), getUserPlanById);
+router.post("/user-plans/:userPlanId/tracking", authenticateToken, authorizeRoles("CLIENT"), createOrUpdateDailyTracking);
+router.get("/user-plans/:userPlanId/tracking", authenticateToken, authorizeRoles("CLIENT"), getDailyTracking);
+router.get("/user-plans/:userPlanId/tracking/:date", authenticateToken, authorizeRoles("CLIENT"), getDailyTrackingByDate);
 export default router;

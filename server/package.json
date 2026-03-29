@@ -26,13 +26,13 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
     "pg": "^8.18.0",
-    "prisma": "^7.6.0",
     "socket.io": "^4.8.3",
     "stripe": "^20.4.0"
   },
   "devDependencies": {
     "@types/node": "^25.3.0",
     "nodemon": "^3.1.11",
+    "prisma": "^7.6.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },

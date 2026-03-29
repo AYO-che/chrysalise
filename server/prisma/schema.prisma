@@ -1,11 +1,11 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
 }
 
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/prisma"
+}
 model User {
   id                     String         @id @default(uuid()) @db.Uuid
   email                  String         @unique
@@ -37,6 +37,7 @@ model User {
   resetToken       String?
   resetTokenExpiry DateTime?
  usedFreePlanTrial Boolean @default(false)
+ userPlans UserPlan[]
 
 }
 
@@ -110,6 +111,7 @@ model Plan {
   updatedAt         DateTime @updatedAt
   nutrition         User?    @relation("NutritionPlans", fields: [nutritionId], references: [id], onDelete: SetNull)
   offer             Offer    @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  userPlans         UserPlan[]
 }
 
 model Subscription {
@@ -126,7 +128,7 @@ model Subscription {
   nutrition   User?              @relation("NutritionSubscriptions", fields: [nutritionId], references: [id], onDelete: SetNull)
   offer       Offer              @relation(fields: [offerId], references: [id], onDelete: Restrict)
   patient     User               @relation("PatientSubscriptions", fields: [patientId], references: [id], onDelete: Cascade)
-
+  userPlans    UserPlan[]
   @@index([patientId])
   @@index([nutritionId])
   @@index([status])
@@ -257,6 +259,52 @@ model Conversation {
   @@unique([patientId, nutritionId])
 }
 
+
+
+model UserPlan {
+  id             String   @id @default(uuid()) @db.Uuid
+
+  userId         String   @db.Uuid
+  planId         String   @db.Uuid
+  subscriptionId String   @db.Uuid
+
+  startDate      DateTime @default(now())
+
+  progress       Float    @default(0)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan           Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  dailyTracking  DailyTracking[]
+
+  @@index([userId])
+}
+
+model DailyTracking {
+  id          String   @id @default(uuid()) @db.Uuid
+
+  userPlanId  String   @db.Uuid
+  date        DateTime
+
+  mealsDoneIds   String[] @default([])
+  mealsMissedIds String[] @default([])
+
+  habitsDoneIds   String[] @default([])
+  habitsMissedIds String[] @default([])
+
+  calories       Int?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  userPlan       UserPlan @relation(fields: [userPlanId], references: [id], onDelete: Cascade)
+
+  @@unique([userPlanId, date])
+}
 enum Role {
   ADMIN
   CLIENT

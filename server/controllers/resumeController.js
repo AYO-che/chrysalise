@@ -43,7 +43,7 @@ export const createResume = async (req, res) => {
         certifications,
       },
     });
-
+ 
     res.status(201).json(resume);
   } catch (error) {
     res.status(500).json({ message: "Server error" });

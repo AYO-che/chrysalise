@@ -45,7 +45,6 @@ export const createSubscription = async (req, res) => {
         return res.status(404).json({ message: "Plan not found for this offer" });
       linkedNutritionId = plan.nutritionId ?? null;
 
-      // First plan subscription ever is free
       const client = await prisma.user.findUnique({ where: { id: userId } });
       if (!client.usedFreePlanTrial) {
         isFree = true;
@@ -57,7 +56,6 @@ export const createSubscription = async (req, res) => {
     }
 
     if (offer.type === "AI_CALORIES") {
-      // First AI_CALORIES subscription is 10 days free
       const previousAiSub = await prisma.subscription.findFirst({
         where: { patientId: userId, offer: { type: "AI_CALORIES" } },
       });

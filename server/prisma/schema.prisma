@@ -71,6 +71,8 @@ model Resume {
   certifications  String?
   ratingAverage   Float    @default(0)
   images          String[] @default([])
+  education       String?   // e.g. "MSc Nutrition, University of Algiers"
+  workplace       String?   // e.g. "Clinique El Shifa, Algiers"
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)

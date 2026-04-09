@@ -75,7 +75,7 @@ export const createPayment = async (req, res) => {
       return res.status(400).json({ message: "Payment not completed", status: paymentIntent.status });
 
     // =========================
-    // Zoom (outside transaction)
+    // Zoom + slot conflict check (outside transaction)
     // =========================
     let zoomLink = null;
     let scheduledDate = null;
@@ -87,6 +87,19 @@ export const createPayment = async (req, res) => {
       scheduledDate = sessionDate
         ? new Date(sessionDate)
         : new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      // ✅ Conflict check — reject if slot already taken
+      const conflict = await prisma.session.findFirst({
+        where: {
+          nutritionId: subscription.nutritionId,
+          status: { not: "CANCELLED" },
+          sessionDate: scheduledDate,
+        },
+      });
+      if (conflict)
+        return res.status(409).json({
+          message: "This time slot is already booked, please choose another",
+        });
 
       zoomLink = await createZoomMeeting(
         nutrition.email || "",
@@ -119,7 +132,7 @@ export const createPayment = async (req, res) => {
       let session = null;
 
       // =========================
-      // 🔥 PLAN LOGIC (NEW)
+      // 🔥 PLAN LOGIC
       // =========================
       if (offer.type === "PLAN") {
         const plan = await tx.plan.findUnique({
@@ -128,7 +141,6 @@ export const createPayment = async (req, res) => {
 
         if (!plan) throw new Error("Plan not found");
 
-        // ✅ create UserPlan
         await tx.userPlan.create({
           data: {
             userId: subscription.patientId,

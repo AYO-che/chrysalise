@@ -75,7 +75,7 @@ import {
   getSubscriptionById,
   getNutritionSubscriptions,
   cancelSubscription,
-} from "../controllers/subscriptionController.js";
+} from "../controllers/SubscriptionController.js";
 
 // Payments
 import {
@@ -90,7 +90,8 @@ import {
   getMySessions,
   getSessionById,
   updateSessionStatus,
-} from "../controllers/sessionController.js";
+  getOccupiedSlots,          // ✅ NEW
+} from "../controllers/SessionController.js";
 
 // Reviews
 import {
@@ -134,8 +135,7 @@ import {
   sendMessage,
 } from "../controllers/messageController.js";
 
-const router = express.Router();
-// userPlanC
+// User Plans
 import {
   getMyCurrentPlanDay,
   getMyUserPlans,
@@ -144,6 +144,8 @@ import {
   getDailyTrackingByDate,
   getUserPlanById,
 } from "../controllers/userPlanController.js";
+
+const router = express.Router();
 
 /* =========================
    AUTH ROUTES
@@ -171,14 +173,11 @@ router.patch("/change-password", authenticateToken, changePassword);
    USER ROUTES
 ========================= */
 
-// Nutritionists
 router.get("/nutritionists", authenticateToken, authorizeRoles("ADMIN"), getAllNutritionists);
 router.post("/nutritionists", authenticateToken, authorizeRoles("ADMIN"), createNutritionist);
 
-// Clients
 router.get("/clients", authenticateToken, authorizeRoles("ADMIN"), getAllClients);
 
-// Shared — get, update, delete any user by ID
 router.get(
   "/users/:id",
   authenticateToken,
@@ -259,7 +258,7 @@ router.delete("/offers/:id", authenticateToken, authorizeRoles("NUTRITION", "ADM
 /* =========================
    PLAN ROUTES
 ========================= */
- 
+
 router.get("/plans/mine", authenticateToken, authorizeRoles("NUTRITION"), getMyPlans);
 router.get("/plans/recommended", authenticateToken, authorizeRoles("CLIENT"), getRecommendedPlans);
 router.get("/plans", authenticateToken, getAllPlans);
@@ -274,7 +273,7 @@ router.delete("/plans/:id", authenticateToken, authorizeRoles("NUTRITION", "ADMI
 
 router.post("/subscriptions", authenticateToken, authorizeRoles("CLIENT"), createSubscription);
 
-//  Static routes MUST come before /:id routes
+// Static routes MUST come before /:id routes
 router.get("/subscriptions/mine", authenticateToken, authorizeRoles("CLIENT"), getMySubscriptions);
 router.get("/subscriptions/nutrition", authenticateToken, authorizeRoles("NUTRITION"), getNutritionSubscriptions);
 router.get("/subscriptions/:id", authenticateToken, getSubscriptionById);
@@ -294,6 +293,7 @@ router.get("/payments/:id", authenticateToken, getPaymentById);
 
 // Static routes MUST come before /:id routes
 router.get("/sessions/mine", authenticateToken, authorizeRoles("CLIENT", "NUTRITION"), getMySessions);
+router.get("/sessions/occupied/:nutritionId", authenticateToken, authorizeRoles("CLIENT"), getOccupiedSlots); // ✅ NEW
 router.get("/sessions", authenticateToken, authorizeRoles("ADMIN"), getAllSessions);
 router.get("/sessions/:id", authenticateToken, getSessionById);
 router.patch("/sessions/:id/status", authenticateToken, authorizeRoles("NUTRITION", "ADMIN"), updateSessionStatus);
@@ -330,7 +330,7 @@ router.patch("/blog/:id/status", authenticateToken, authorizeRoles("ADMIN"), upd
    NOTIFICATION ROUTES
 ========================= */
 
-//  Static routes MUST come before /:id routes
+// Static routes MUST come before /:id routes
 router.get("/notifications/unread-count", authenticateToken, getUnreadCount);
 router.get("/notifications", authenticateToken, getMyNotifications);
 router.patch("/notifications/read-all", authenticateToken, markAllAsRead);
@@ -356,4 +356,5 @@ router.get("/user-plans/:id", authenticateToken, authorizeRoles("CLIENT"), getUs
 router.post("/user-plans/:userPlanId/tracking", authenticateToken, authorizeRoles("CLIENT"), createOrUpdateDailyTracking);
 router.get("/user-plans/:userPlanId/tracking", authenticateToken, authorizeRoles("CLIENT"), getDailyTracking);
 router.get("/user-plans/:userPlanId/tracking/:date", authenticateToken, authorizeRoles("CLIENT"), getDailyTrackingByDate);
+
 export default router;

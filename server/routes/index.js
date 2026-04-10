@@ -25,6 +25,7 @@ import {
   createNutritionist,
   updateUser,
   deleteUser,
+  getNutritionistsByOfferType,
 } from "../controllers/userController.js";
 
 // Profile
@@ -177,7 +178,12 @@ router.get("/nutritionists", authenticateToken, authorizeRoles("ADMIN"), getAllN
 router.post("/nutritionists", authenticateToken, authorizeRoles("ADMIN"), createNutritionist);
 
 router.get("/clients", authenticateToken, authorizeRoles("ADMIN"), getAllClients);
-
+router.get(
+  "/nutritionists/by-type",
+  authenticateToken,
+  authorizeRoles("CLIENT", "ADMIN"),
+  getNutritionistsByOfferType
+);
 router.get(
   "/users/:id",
   authenticateToken,

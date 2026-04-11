@@ -38,6 +38,7 @@ model User {
   resetTokenExpiry DateTime?
  usedFreePlanTrial Boolean @default(false)
  userPlans UserPlan[]
+ offersAsNutrition Offer[] @relation("NutritionOffers")
 
 }
 
@@ -82,6 +83,7 @@ model Resume {
 
 model Offer {
   id               String         @id @default(uuid()) @db.Uuid
+  nutritionId      String?        @db.Uuid        // ← add this
   name             String
   description      String?
   type             OfferType
@@ -93,6 +95,7 @@ model Offer {
   isActive         Boolean        @default(true)
   plan             Plan?
   subscriptions    Subscription[]
+  nutrition        User?          @relation("NutritionOffers", fields: [nutritionId], references: [id], onDelete: SetNull)
 }
 
 model Plan {

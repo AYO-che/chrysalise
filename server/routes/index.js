@@ -56,6 +56,8 @@ import {
   getOfferById,
   updateOffer,
   deleteOffer,
+  getConsultationOffers,
+
 } from "../controllers/offerController.js";
 
 // Plans
@@ -254,13 +256,13 @@ router.patch("/resume", authenticateToken, authorizeRoles("NUTRITION"), updateRe
 /* =========================
    OFFER ROUTES
 ========================= */
-
+router.get("/offers/consultation", authenticateToken, getConsultationOffers);
+router.get("/offers/mine", authenticateToken, authorizeRoles("NUTRITION"), getMyOffers);
 router.get("/offers", authenticateToken, getAllOffers);
 router.get("/offers/:id", authenticateToken, getOfferById);
 router.post("/offers", authenticateToken, authorizeRoles("NUTRITION"), createOffer);
 router.patch("/offers/:id", authenticateToken, authorizeRoles("NUTRITION", "ADMIN"), updateOffer);
 router.delete("/offers/:id", authenticateToken, authorizeRoles("NUTRITION", "ADMIN"), deleteOffer);
-
 /* =========================
    PLAN ROUTES
 ========================= */

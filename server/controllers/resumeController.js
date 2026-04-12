@@ -41,6 +41,9 @@ export const createResume = async (req, res) => {
         experienceYears,
         specializations,
         certifications,
+        offersTypes,
+         education,
+         workplace,
       },
     });
  
